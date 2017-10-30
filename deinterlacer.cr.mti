@@ -1,0 +1,57 @@
+D:/nikolas/deinterlacer/gen_interlaced_16b.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/gen_interlaced_16b.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module gen_interlaced_16b
+
+Top level modules:
+	gen_interlaced_16b
+
+} {} {}} D:/nikolas/deinterlacer/gen_interlaced.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/gen_interlaced.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module gen_interlaced
+
+Top level modules:
+	gen_interlaced
+
+} {} {}} D:/nikolas/deinterlacer/structure.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/structure.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module structure
+
+Top level modules:
+	structure
+
+} {} {}} D:/nikolas/deinterlacer/sum_div2.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/sum_div2.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module sum_div2
+
+Top level modules:
+	sum_div2
+
+} {} {}} D:/nikolas/deinterlacer/pipe_test.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/pipe_test.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module pipe_test
+
+Top level modules:
+	pipe_test
+
+} {} {}} D:/nikolas/deinterlacer/pipe.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/pipe.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module pipe
+
+Top level modules:
+	pipe
+
+} {} {}} {D:/nikolas/deinterlacer/generator 270x200 (3 px in parallel).sv} {1 {vlog -work work -sv -stats=none {D:/nikolas/deinterlacer/generator 270x200 (3 px in parallel).sv}
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module generator
+
+Top level modules:
+	generator
+
+} {} {}} D:/nikolas/deinterlacer/deinterlacer.sv {1 {vlog -work work -sv -stats=none D:/nikolas/deinterlacer/deinterlacer.sv
+Model Technology ModelSim ALTERA vlog 10.4b Compiler 2015.05 May 27 2015
+-- Compiling module deinterlacer
+
+Top level modules:
+	deinterlacer
+
+} {} {}}
