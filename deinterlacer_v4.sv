@@ -44,9 +44,7 @@ input  logic					din_endofpacket;
 logic [DATA_WIDTH-1:0] num_of_pixel_in_line;
 logic [DATA_WIDTH-1:0] num_of_line;
 logic [DATA_WIDTH-1:0] cols, rows;
-logic [BITS_PER_SYMBOL-1:0] buffs [0:2*WIDTH-1]; // Buffer for 2 lines (first is from BUFF0_BASE to WIDTH-1, second is from BUFF1_BASE to 2*WIDTH-1)
-enum { buff0, buff1 } current_buff; // Which buffer is now prepared for loading next line
-logic [12:0] ptr_wr, ptr_rd, ptr_rd2; // Pointers to buffer cell
+enum { buff0, buff1 } current_buff, current_buff_to_read; // Which buffer is now prepared for loading and sending next line
 logic got_last_row;
 
 logic aver_sent; // Average line was sent
@@ -55,6 +53,34 @@ logic [3:0] ctrl_px_counter;
 
 logic [BITS_PER_SYMBOL-1:0] px1, px2, px_out;
 logic last_line_source_flag;
+
+logic inner_rd_req0, inner_wr_req0, inner_rd_req1, inner_wr_req1;
+logic [7:0] from_fifo0, from_fifo1;
+logic [1:0] dt_read0, dt_read1;
+
+FIFO_1K fifo0 ( // Buffer for 1 line
+	.reset 		(reset),
+	.clock 		(clock),
+
+	.rd_req 	(inner_rd_req0),
+	.q 			(from_fifo0),
+	.wr_req 	(inner_wr_req0),
+	.data 		(din_data),
+	.full 		(buff0_full),
+	.dt_read 	(dt_read0)
+);
+
+FIFO_1K fifo1 ( // Buffer for 1 line
+	.reset 		(reset),
+	.clock 		(clock),
+
+	.rd_req 	(inner_rd_req1),
+	.q 			(from_fifo1),
+	.wr_req 	(inner_wr_req1),
+	.data 		(din_data),
+	.full 		(buff1_full),
+	.dt_read 	(dt_read1)
+);
 
 /*
 	States of reciever state-machine.
@@ -69,17 +95,30 @@ enum {
 	skip_line_state
 } sink_state; 
 
+always_comb begin 
+	if ((sink_state == first_line) && din_valid)
+		inner_wr_req0 <= 1;
+	else if ((sink_state == receive_next_line) && din_valid && (current_buff == buff0))
+		inner_wr_req0 <= 1;
+	else
+		inner_wr_req0 <= 0;
+end
+
+always_comb begin 
+	if ((sink_state == receive_next_line) && din_valid && (current_buff == buff1))
+		inner_wr_req1 <= 1;
+	else
+		inner_wr_req1 <= 0;
+end
+
 always_ff @(posedge clock or posedge reset) begin : sink
 	if ( reset ) begin
 		sink_state <= send_first_ready;
 		din_ready <= 0;
 		cols <= 0;
 		rows <= 0;
-		ptr_wr <= BUFF0_BASE;
 		current_buff <= buff0;
 		got_last_row <= 0;
-		buff0_full <= 0;
-		buff1_full <= 0;
 	end else begin
 		case ( sink_state )
 		
@@ -100,25 +139,17 @@ always_ff @(posedge clock or posedge reset) begin : sink
 					sink_state <= first_line;
 					cols <= 0;
 					rows <= 0;
-					buff0_full <= 0;
-					buff1_full <= 0;
-					ptr_wr <= BUFF0_BASE;
 					got_last_row <= 0;
 				end
 			end
 
 			first_line : begin
 				if ( din_valid ) begin
-					buffs[ptr_wr] <= din_data[7:0];
-					ptr_wr <= ptr_wr + 1;
-
 					if( cols == ( WIDTH - 1 ) ) begin
 						cols <= 0;	
 						rows <= rows + 1;
 						sink_state <= receive_next_line;
 						current_buff <= buff1;
-						ptr_wr <= BUFF1_BASE;
-						buff0_full <= 1;
 					end else
 						cols <= cols + 1;
 				end
@@ -126,26 +157,17 @@ always_ff @(posedge clock or posedge reset) begin : sink
 
 			receive_next_line : begin 
 				if ( din_valid ) begin 
+					if ( cols == ( WIDTH - 2 ) )
+							din_ready <= 0;
 					if ( rows == 1 ) begin 
-						buffs[ptr_wr] <= din_data[7:0];
-						ptr_wr <= ptr_wr + 1;
-
 						if( cols == ( WIDTH - 1 ) ) begin
 							cols <= 0;	
 							rows <= rows + 1;
 							sink_state <= skip_line_state;
 							current_buff <= buff0;
-							ptr_wr <= BUFF0_BASE;
-							buff1_full <= 1;
 						end else
 							cols <= cols + 1;
-
-						if ( cols == ( WIDTH - 2 ) )
-							din_ready <= 0;
 					end else begin
-						buffs[ptr_wr] <= din_data[7:0];
-						ptr_wr <= ptr_wr + 1;
-
 						if( cols == ( WIDTH - 1 ) ) begin
 							cols <= 0;	
 
@@ -158,18 +180,11 @@ always_ff @(posedge clock or posedge reset) begin : sink
 
 							if (current_buff == buff0) begin
 								current_buff <= buff1;
-								ptr_wr <= BUFF1_BASE;
-								buff0_full <= 1;
 							end else begin
 								current_buff <= buff0;
-								ptr_wr <= BUFF0_BASE;
-								buff1_full <= 1;
 							end
 						end else
 							cols <= cols + 1;
-
-						if ( cols == ( WIDTH - 2 ) )
-							din_ready <= 0;
 					end
 				end
 			end
@@ -181,11 +196,6 @@ always_ff @(posedge clock or posedge reset) begin : sink
 					else
 						sink_state <= receive_next_line;
 					din_ready <= 1;
-
-					if ( current_buff == buff0 )
-						buff0_full <= 0;
-					else
-						buff1_full <= 0;
 				end
 			end
 		endcase
@@ -211,13 +221,16 @@ always_ff @(posedge clock or posedge reset) begin : source
 		dout_valid <= 0;
 		dout_startofpacket <= 0;
 		dout_endofpacket <= 0;
-		ptr_rd <= 0;
-		ptr_rd2 <= 0;
 		num_of_pixel_in_line <= 0;
 		num_of_line <= 0;
 		ctrl_px_counter <= 0;
 		last_line_source_flag <= 0;
 		aver_sent <= 0;
+		inner_rd_req0 <= 0;
+		inner_rd_req1 <= 0;
+		current_buff_to_read <= buff0;
+		dt_read0 <= 2'b01;
+		dt_read1 <= 2'b01;
 	end else begin
 		
 		case ( source_state )
@@ -291,8 +304,6 @@ always_ff @(posedge clock or posedge reset) begin : source
 					dout_endofpacket <= 0;
 					dout_startofpacket <= 1;
 					dout_data <= 8'h00;
-					ptr_rd <= BUFF0_BASE;
-					ptr_rd2 <= BUFF0_BASE;
 					num_of_pixel_in_line <= 0;
 					num_of_line <= 0;
 					source_state <= send_first_line;
@@ -305,17 +316,19 @@ always_ff @(posedge clock or posedge reset) begin : source
 					if ( num_of_pixel_in_line == 0 )
 						dout_startofpacket <= 0;
 					dout_valid <= 1;
-					dout_data <= buffs[ptr_rd];
-					ptr_rd <= ptr_rd + 1;
+					dout_data <= from_fifo0;
+					inner_rd_req0 <= 1;
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
 						source_state <= send_interpolated_line;
-						ptr_rd <= BUFF1_BASE;
+						current_buff_to_read <= buff1;
 					end else
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
-				end else
+				end else begin
 					dout_valid <= 0;
+					inner_rd_req0 <= 0;
+				end
 			end
 
 			send_interpolated_line : begin 
@@ -323,27 +336,33 @@ always_ff @(posedge clock or posedge reset) begin : source
 					dout_valid <= 1;
 					dout_data <= px_out;
 
-					ptr_rd <= ptr_rd + 1;
-					ptr_rd2 <= ptr_rd2 + 1;
+					inner_rd_req0 <= 1;
+					inner_rd_req1 <= 1;
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
 						num_of_line <= num_of_line + 1;
 						source_state <= send_next_line;
+						if ( num_of_line == ( HALF_HEIGHT - 1 ) ) begin 
+							if (current_buff_to_read == buff0) begin
+								dt_read1 <= 2'b10;
+							end else begin
+								dt_read0 <= 2'b10;
 
-						if (ptr_rd > WIDTH) begin 
-							ptr_rd <= BUFF0_BASE;
-							ptr_rd2 <= BUFF0_BASE;
-						end else begin 
-							ptr_rd <= BUFF1_BASE;
-							ptr_rd2 <= BUFF1_BASE;
+						if (current_buff_to_read == buff0) begin
+							current_buff_to_read <= buff1;
+						end else begin
+							current_buff_to_read <= buff0;
 						end
 						if ( num_of_line != ( HALF_HEIGHT - 2 ) )
 							aver_sent <= 1;
 					end else
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
-				end else
+				end else begin
 					dout_valid <= 0;
+					inner_rd_req0 <= 0;
+					inner_rd_req1 <= 0;
+				end
 			end
 
 			send_next_line : begin 
@@ -351,8 +370,15 @@ always_ff @(posedge clock or posedge reset) begin : source
 					if ( num_of_pixel_in_line == 0 )
 						aver_sent <= 0;
 					dout_valid <= 1;
-					dout_data <= buffs[ptr_rd];
-					ptr_rd <= ptr_rd + 1;
+					if (current_buff_to_read == buff0) begin
+						dout_data <= from_fifo0;
+						inner_rd_req0 <= 1;
+						inner_rd_req1 <= 0;
+					end else begin 
+						dout_data <= from_fifo1;
+						inner_rd_req1 <= 1;
+						inner_rd_req0 <= 0;
+					end
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
@@ -369,15 +395,18 @@ always_ff @(posedge clock or posedge reset) begin : source
 						end else
 							source_state <= send_interpolated_line;
 						
-						if ( ptr_rd > WIDTH ) begin 
-							ptr_rd <= BUFF0_BASE;
-						end else begin 
-							ptr_rd <= BUFF1_BASE;
+						if (current_buff_to_read == buff0) begin
+							current_buff_to_read <= buff1;
+						end else begin
+							current_buff_to_read <= buff0;
 						end
 					end else
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
-				end else
+				end else begin
 					dout_valid <= 0;
+					inner_rd_req0 <= 0;
+					inner_rd_req1 <= 0;
+				end
 			end
 		endcase
 	end
@@ -391,8 +420,8 @@ sum_div2 #(BITS_PER_SYMBOL) sd2 (
 );
 
 assign 
-	px1 = buffs[ptr_rd],
-	px2 = buffs[ptr_rd2];
+	px1 = (current_buff_to_read == buff0) ? from_fifo0 : from_fifo1,
+	px2 = (current_buff_to_read == buff0) ? from_fifo1 : from_fifo0;
 
 
 endmodule // deinterlacer_v3

@@ -6,3 +6,4 @@ work/_lib.qdb
 *.qpg
 *.qtl
 work/_vmake
+*.mti
