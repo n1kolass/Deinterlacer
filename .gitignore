@@ -1,0 +1,8 @@
+
+*.mpf
+work/_info
+work/_lib.qdb
+*.qdb
+*.qpg
+*.qtl
+work/_vmake
