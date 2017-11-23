@@ -14,7 +14,9 @@ module deinterlacer_v4 (
 						din_ready,
 						din_valid,
 						din_startofpacket,
-						din_endofpacket
+						din_endofpacket,
+
+						cols_out
 );
 
 parameter  SYMBOLS_PER_BEAT = 1;
@@ -42,9 +44,11 @@ input  logic					din_valid;
 input  logic 					din_startofpacket;
 input  logic					din_endofpacket;
 
-logic [DATA_WIDTH-1:0] num_of_pixel_in_line;
-logic [DATA_WIDTH-1:0] num_of_line;
-logic [DATA_WIDTH-1:0] cols, rows;
+output logic [9:0] 	cols_out;
+
+logic [9:0] num_of_pixel_in_line;
+logic [9:0] num_of_line;
+logic [9:0] cols, rows;
 enum { buff0, buff1 } current_buff, current_buff_to_read; // Which buffer is now prepared for loading and sending next line
 logic got_last_row;
 
@@ -82,6 +86,8 @@ FIFO_1K fifo1 ( // Buffer for 1 line
 	.full 		(buff1_full),
 	.dt_read 	(dt_read1)
 );
+
+assign cols_out = cols;
 
 /*
 	States of reciever state-machine.
