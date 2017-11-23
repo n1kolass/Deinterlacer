@@ -19,7 +19,8 @@ module deinterlacer_v4 (
 
 parameter  SYMBOLS_PER_BEAT = 1;
 parameter  BITS_PER_SYMBOL  = 8;
-localparam DATA_WIDTH		= SYMBOLS_PER_BEAT * BITS_PER_SYMBOL;
+parameter  DATA_WIDTH 		= 8;
+// localparam DATA_WIDTH		= SYMBOLS_PER_BEAT * BITS_PER_SYMBOL;
 parameter  WIDTH 			= 640;
 parameter  HEIGHT 			= 480;
 localparam HALF_HEIGHT 		= HEIGHT / 2;
