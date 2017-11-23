@@ -53,6 +53,8 @@ enum { buff0, buff1 } current_buff, current_buff_to_read; // Which buffer is now
 logic got_last_row;
 
 logic aver_sent; // Average line was sent
+logic send_aver_sent_where_to; // Which state is go after send_aver_sent
+logic ready_to_continue; 
 logic buff0_full, buff1_full;
 logic [3:0] ctrl_px_counter;
 
@@ -126,6 +128,7 @@ always_ff @(posedge clock or posedge reset) begin : sink
 		rows <= 0;
 		current_buff <= buff0;
 		got_last_row <= 0;
+		ready_to_continue <= 0;
 	end else begin
 		case ( sink_state )
 		
@@ -171,6 +174,7 @@ always_ff @(posedge clock or posedge reset) begin : sink
 							cols <= 0;	
 							rows <= rows + 1;
 							sink_state <= skip_line_state;
+							ready_to_continue <= 1;
 							current_buff <= buff0;
 						end else
 							cols <= cols + 1;
@@ -184,6 +188,7 @@ always_ff @(posedge clock or posedge reset) begin : sink
 								rows <= rows + 1;
 
 							sink_state <= skip_line_state;
+							ready_to_continue <= 1;
 
 							if (current_buff == buff0) begin
 								current_buff <= buff1;
@@ -198,6 +203,7 @@ always_ff @(posedge clock or posedge reset) begin : sink
 
 			skip_line_state : begin
 				if ( aver_sent ) begin
+					ready_to_continue <= 0;
 					if ( got_last_row ) 
 						sink_state <= process_ctrl_packet;
 					else
@@ -219,7 +225,8 @@ enum {
 	begin_video_packet,		// Send WIDTH{0}
 	send_first_line,
 	send_interpolated_line,
-	send_next_line
+	send_next_line,
+	send_aver_sent
 } source_state; 
 
 always_ff @(posedge clock or posedge reset) begin : source
@@ -238,6 +245,7 @@ always_ff @(posedge clock or posedge reset) begin : source
 		current_buff_to_read <= buff0;
 		dt_read0 <= 2'b01;
 		dt_read1 <= 2'b01;
+		send_aver_sent_where_to <= 0;
 	end else begin
 		
 		case ( source_state )
@@ -348,7 +356,6 @@ always_ff @(posedge clock or posedge reset) begin : source
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
 						num_of_line <= num_of_line + 1;
-						source_state <= send_next_line;
 						if ( num_of_line == ( HALF_HEIGHT - 1 ) ) begin 
 							if (current_buff_to_read == buff0) begin
 								dt_read1 <= 2'b10;
@@ -361,15 +368,19 @@ always_ff @(posedge clock or posedge reset) begin : source
 						end else begin
 							current_buff_to_read <= buff0;
 						end
-						if ( num_of_line != ( HALF_HEIGHT - 2 ) )
-							aver_sent <= 1;
+						if ( num_of_line != ( HALF_HEIGHT - 2 ) ) begin
+							//aver_sent <= 1;
+							send_aver_sent_where_to <= 0;
+							source_state <= send_aver_sent;
+						end else
+							source_state <= send_next_line;
 
-						inner_rd_req0 <= 1;
-						inner_rd_req1 <= 1;
-					end else begin
-						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
 						inner_rd_req0 <= 0;
 						inner_rd_req1 <= 0;
+					end else begin
+						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
+						inner_rd_req0 <= 1;
+						inner_rd_req1 <= 1;
 					end
 				end else begin
 					dout_valid <= 0;
@@ -398,9 +409,11 @@ always_ff @(posedge clock or posedge reset) begin : source
 
 						if ( num_of_line == ( HALF_HEIGHT - 1 ) ) begin 
 							if (last_line_source_flag == 1) begin
-								aver_sent <= 1;
+								//aver_sent <= 1;
+								source_state <= send_aver_sent;
+								send_aver_sent_where_to <= 1;
 								dout_endofpacket <= 1;
-								source_state <= wait_for_ready;
+								//source_state <= wait_for_ready;
 							end else begin
 								last_line_source_flag <= 1;
 								source_state <= send_next_line;
@@ -414,13 +427,8 @@ always_ff @(posedge clock or posedge reset) begin : source
 							current_buff_to_read <= buff0;
 						end
 
-						if (current_buff_to_read == buff0) begin
-							inner_rd_req0 <= 0;
-							inner_rd_req1 <= 0;
-						end else begin 
-							inner_rd_req1 <= 0;
-							inner_rd_req0 <= 0;
-						end
+						inner_rd_req1 <= 0;
+						inner_rd_req0 <= 0;
 					end else begin
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
 						if (current_buff_to_read == buff0) begin
@@ -435,6 +443,16 @@ always_ff @(posedge clock or posedge reset) begin : source
 					dout_valid <= 0;
 					inner_rd_req0 <= 0;
 					inner_rd_req1 <= 0;
+				end
+			end
+
+			send_aver_sent : begin 
+				if (ready_to_continue) begin 
+					aver_sent <= 1;
+					if (send_aver_sent_where_to)
+						source_state <= wait_for_ready;
+					else
+						source_state <= send_next_line;
 				end
 			end
 		endcase
