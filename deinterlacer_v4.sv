@@ -324,14 +324,16 @@ always_ff @(posedge clock or posedge reset) begin : source
 						dout_startofpacket <= 0;
 					dout_valid <= 1;
 					dout_data <= from_fifo0;
-					inner_rd_req0 <= 1;
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
 						source_state <= send_interpolated_line;
 						current_buff_to_read <= buff1;
-					end else
+						inner_rd_req0 <= 0;
+					end else begin
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
+						inner_rd_req0 <= 1;
+					end
 				end else begin
 					dout_valid <= 0;
 					inner_rd_req0 <= 0;
@@ -342,9 +344,6 @@ always_ff @(posedge clock or posedge reset) begin : source
 				if ( dout_ready && buff0_full && buff1_full ) begin 
 					dout_valid <= 1;
 					dout_data <= px_out;
-
-					inner_rd_req0 <= 1;
-					inner_rd_req1 <= 1;
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
@@ -364,8 +363,14 @@ always_ff @(posedge clock or posedge reset) begin : source
 						end
 						if ( num_of_line != ( HALF_HEIGHT - 2 ) )
 							aver_sent <= 1;
-					end else
+
+						inner_rd_req0 <= 1;
+						inner_rd_req1 <= 1;
+					end else begin
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
+						inner_rd_req0 <= 0;
+						inner_rd_req1 <= 0;
+					end
 				end else begin
 					dout_valid <= 0;
 					inner_rd_req0 <= 0;
@@ -380,12 +385,12 @@ always_ff @(posedge clock or posedge reset) begin : source
 					dout_valid <= 1;
 					if (current_buff_to_read == buff0) begin
 						dout_data <= from_fifo0;
-						inner_rd_req0 <= 1;
-						inner_rd_req1 <= 0;
+						// inner_rd_req0 <= 1;
+						// inner_rd_req1 <= 0;
 					end else begin 
 						dout_data <= from_fifo1;
-						inner_rd_req1 <= 1;
-						inner_rd_req0 <= 0;
+						// inner_rd_req1 <= 1;
+						// inner_rd_req0 <= 0;
 					end
 
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
@@ -408,8 +413,24 @@ always_ff @(posedge clock or posedge reset) begin : source
 						end else begin
 							current_buff_to_read <= buff0;
 						end
-					end else
+
+						if (current_buff_to_read == buff0) begin
+							inner_rd_req0 <= 0;
+							inner_rd_req1 <= 0;
+						end else begin 
+							inner_rd_req1 <= 0;
+							inner_rd_req0 <= 0;
+						end
+					end else begin
 						num_of_pixel_in_line <= num_of_pixel_in_line + 1;
+						if (current_buff_to_read == buff0) begin
+							inner_rd_req0 <= 1;
+							inner_rd_req1 <= 0;
+						end else begin 
+							inner_rd_req1 <= 1;
+							inner_rd_req0 <= 0;
+						end
+					end
 				end else begin
 					dout_valid <= 0;
 					inner_rd_req0 <= 0;

@@ -23,7 +23,7 @@ output logic [7:0] q;
 input logic wr_req;
 output logic [7:0] data;
 output logic full;
-input logic dt_read;
+input logic [1:0] dt_read;
 
 logic [9:0] head, tail;
 logic inner_full;
@@ -61,13 +61,13 @@ always_ff @(posedge clock or posedge reset) begin
 			dd <= 0;
 		end else begin 
 			if (tail == `MAX_SIZE-1) begin 
-				if (dt_read == 2'b00 || dt_read == 2'b11) begin
-					inner_full <= 0;
-				end else if (dt_read == 2'b01) begin
+				if (dt_read == 2'b01) begin
 					d <= 1;
 					if (d) begin
 						inner_full <= 0;
 					end
+				end if (dt_read == 2'b00 || dt_read == 2'b11) begin
+					inner_full <= 0;
 				end else if (dt_read == 2'b10) begin 
 					d <= 1;
 					if (d) begin
