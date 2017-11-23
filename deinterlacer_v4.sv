@@ -348,7 +348,8 @@ always_ff @(posedge clock or posedge reset) begin : source
 								dt_read1 <= 2'b10;
 							end else begin
 								dt_read0 <= 2'b10;
-
+							end
+						end
 						if (current_buff_to_read == buff0) begin
 							current_buff_to_read <= buff1;
 						end else begin
