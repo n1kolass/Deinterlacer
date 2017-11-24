@@ -51,7 +51,7 @@ logic [3:0] ctrl_px_counter;
 logic last_line_source_flag;
 enum { buff0, buff1 } cur_buff; // Which buffer is now prepared for sending next line
 logic send_aver_sent_where_to;
-
+logic [DATA_WIDTH-1:0] px_out;
 logic rd_req0_sig, rd_req1_sig;
 
 /*
