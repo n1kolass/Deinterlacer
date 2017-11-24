@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
 
-`include "util.sv"
+//`include "util.sv"
 
 module deinterlacer_v5 (
 	clock,

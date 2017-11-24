@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
 
-`include "util.sv"
+//`include "util.sv"
 
 module source (
 	clock,
@@ -37,11 +37,11 @@ output logic dout_endofpacket;
 output logic rd_req0;
 input logic [DATA_WIDTH-1:0] q0;
 input logic full0;
-input logic empty_enable0;
+output logic empty_enable0;
 output logic rd_req1;
 input logic [DATA_WIDTH-1:0] q1;
 input logic full1;
-input logic empty_enable1;
+output logic empty_enable1;
 
 input logic ready_to_continue;
 output logic aver_sent;
