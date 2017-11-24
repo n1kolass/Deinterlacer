@@ -119,24 +119,23 @@ always_ff @(posedge clock or posedge reset) begin : sink
 
 			receive_next_line : begin 
 				if (din_valid) begin 
-					if (cur_px == (WIDTH-2)) begin
+					if (cur_px == (WIDTH-2)) 
 						din_ready <= 0;
-						if (cur_px == (WIDTH-1)) begin
-							cur_px <= 0;	
-							if (cur_line == (HALF_HEIGHT-1)) 
-								got_last_row <= 1;
-							else
-								cur_line <= cur_line + 1;
-							sink_state <= skip_line_state;
-							ready_to_continue <= 1;
-							if (cur_buff == buff0) begin
-								cur_buff <= buff1;
-							end else begin
-								cur_buff <= buff0;
-							end
-						end else
-							cur_px <= cur_px + 1;
-					end
+					if (cur_px == (WIDTH-1)) begin
+						cur_px <= 0;	
+						if (cur_line == (HALF_HEIGHT-1)) 
+							got_last_row <= 1;
+						else
+							cur_line <= cur_line + 1;
+						sink_state <= skip_line_state;
+						ready_to_continue <= 1;
+						if (cur_buff == buff0) begin
+							cur_buff <= buff1;
+						end else begin
+							cur_buff <= buff0;
+						end
+					end else
+						cur_px <= cur_px + 1;
 				end
 			end
 
