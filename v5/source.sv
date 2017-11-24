@@ -54,6 +54,9 @@ logic send_aver_sent_where_to;
 logic [DATA_WIDTH-1:0] px_out;
 logic rd_req0_sig, rd_req1_sig;
 
+assign rd_req0 = rd_req0_sig;
+assign rd_req1 = rd_req1_sig;
+
 /*
 	States of sender state-machine.
 	Sends frames.
@@ -188,7 +191,7 @@ always_ff @(posedge clock or posedge reset) begin : source
 				if (dout_ready && full0 && full1) begin 
 					if (cur_px == 0) begin 
 						empty_enable0 <= 0;
-						empty_enable1 <= 1;
+						empty_enable1 <= 0;
 					end
 					dout_valid <= 1;
 					dout_data <= px_out;

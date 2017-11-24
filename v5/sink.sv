@@ -43,6 +43,9 @@ enum { buff0, buff1 } cur_buff; // Which buffer is now prepared for loading next
 logic got_last_row;
 logic wr_req0_sig, wr_req1_sig;
 
+assign wr_req0 = wr_req0_sig;
+assign wr_req1 = wr_req1_sig;
+
 /*
 	States of reciever state-machine.
 	Recieves fields and store into mem.
