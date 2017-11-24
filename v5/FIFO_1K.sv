@@ -9,7 +9,8 @@ module FIFO_1K (
 	q,
 	wr_req,
 	data,
-	full
+	full,
+	empty_enable
 );
 
 input logic reset;
@@ -19,6 +20,7 @@ output logic [7:0] q;
 input logic wr_req;
 output logic [7:0] data;
 output logic full;
+input logic empty_enable;
 
 logic [9:0] head, tail;
 logic inner_full;
@@ -51,7 +53,8 @@ always_ff @(posedge clock or posedge reset) begin
 			end
 		end else begin 
 			if (tail == `MAX_SIZE-1) begin 
-				inner_full <= 0;
+				if (empty_enable)
+					inner_full <= 0;
 				tail <= 0;
 			end else if (rd_req) begin 
 				tail <= tail + 1;

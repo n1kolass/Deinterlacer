@@ -7,3 +7,4 @@ work/_lib.qdb
 *.qtl
 work/_vmake
 *.mti
+*.wlf

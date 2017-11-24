@@ -1,14 +1,12 @@
 `timescale 1ns/1ns
-`define MAX_SIZE 640
+`define MAX_SIZE 10
 
-module FIFO_1K (
+module FIFO_1K_test (
 	reset,
 	clock,
 
 	rd_req,
-	q,
 	wr_req,
-	data,
 	full,
 	empty_enable
 );
@@ -16,27 +14,14 @@ module FIFO_1K (
 input logic reset;
 input logic clock;
 input logic rd_req;
-output logic [7:0] q;
 input logic wr_req;
-output logic [7:0] data;
 output logic full;
 input logic empty_enable;
 
 logic [9:0] head, tail;
 logic inner_full;
-logic [7:0] pre_q;
-
-RAM_1K	RAM_1K_inst (
-	.clock ( clock ),
-	.data ( data ),
-	.rdaddress ( tail ),
-	.wraddress ( head ),
-	.wren ( wr_req ),
-	.q ( pre_q )
-);
 
 assign full = inner_full;
-assign q = pre_q;
 
 always_ff @(posedge clock or posedge reset) begin
 	if(reset) begin
