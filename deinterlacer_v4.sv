@@ -14,20 +14,13 @@ module deinterlacer_v4 (
 						din_ready,
 						din_valid,
 						din_startofpacket,
-						din_endofpacket,
-
-						cols_out
+						din_endofpacket
 );
 
-parameter  SYMBOLS_PER_BEAT = 1;
-parameter  BITS_PER_SYMBOL  = 8;
 parameter  DATA_WIDTH 		= 8;
-// localparam DATA_WIDTH		= SYMBOLS_PER_BEAT * BITS_PER_SYMBOL;
 parameter  WIDTH 			= 640;
 parameter  HEIGHT 			= 480;
 localparam HALF_HEIGHT 		= HEIGHT / 2;
-localparam BUFF0_BASE		= 0; // Base address for buff0
-localparam BUFF1_BASE		= WIDTH; // Base address for buff1
 
 input         					clock;                  
 input        					reset;           
@@ -44,8 +37,6 @@ input  logic					din_valid;
 input  logic 					din_startofpacket;
 input  logic					din_endofpacket;
 
-output logic [9:0] 	cols_out;
-
 logic [9:0] num_of_pixel_in_line;
 logic [9:0] num_of_line;
 logic [9:0] cols, rows;
@@ -58,12 +49,12 @@ logic ready_to_continue;
 logic buff0_full, buff1_full;
 logic [3:0] ctrl_px_counter;
 
-logic [BITS_PER_SYMBOL-1:0] px1, px2, px_out;
+logic [DATA_WIDTH-1:0] px1, px2, px_out;
 logic last_line_source_flag;
 
 logic inner_rd_req0, inner_wr_req0, inner_rd_req1, inner_wr_req1;
+logic empty_en0, empty_en1;
 logic [7:0] from_fifo0, from_fifo1;
-logic [1:0] dt_read0, dt_read1;
 
 FIFO_1K fifo0 ( // Buffer for 1 line
 	.reset 		(reset),
@@ -74,7 +65,7 @@ FIFO_1K fifo0 ( // Buffer for 1 line
 	.wr_req 	(inner_wr_req0),
 	.data 		(din_data),
 	.full 		(buff0_full),
-	.dt_read 	(dt_read0)
+	.empty_enable (empty_en0)
 );
 
 FIFO_1K fifo1 ( // Buffer for 1 line
@@ -86,10 +77,8 @@ FIFO_1K fifo1 ( // Buffer for 1 line
 	.wr_req 	(inner_wr_req1),
 	.data 		(din_data),
 	.full 		(buff1_full),
-	.dt_read 	(dt_read1)
+	.empty_enable (empty_en1)
 );
-
-assign cols_out = cols;
 
 /*
 	States of reciever state-machine.
@@ -243,8 +232,6 @@ always_ff @(posedge clock or posedge reset) begin : source
 		inner_rd_req0 <= 0;
 		inner_rd_req1 <= 0;
 		current_buff_to_read <= buff0;
-		dt_read0 <= 2'b01;
-		dt_read1 <= 2'b01;
 		send_aver_sent_where_to <= 0;
 	end else begin
 		
@@ -356,13 +343,6 @@ always_ff @(posedge clock or posedge reset) begin : source
 					if( num_of_pixel_in_line == ( WIDTH - 1 ) ) begin
 						num_of_pixel_in_line <= 0;	
 						num_of_line <= num_of_line + 1;
-						if ( num_of_line == ( HALF_HEIGHT - 1 ) ) begin 
-							if (current_buff_to_read == buff0) begin
-								dt_read1 <= 2'b10;
-							end else begin
-								dt_read0 <= 2'b10;
-							end
-						end
 						if (current_buff_to_read == buff0) begin
 							current_buff_to_read <= buff1;
 						end else begin
@@ -460,7 +440,7 @@ always_ff @(posedge clock or posedge reset) begin : source
 end
 
 
-sum_div2 #(BITS_PER_SYMBOL) sd2 (
+sum_div2 #(DATA_WIDTH) sd2 (
 	.a 		(px1 	),
 	.b 		(px2 	),
 	.out 	(px_out )
